@@ -4,10 +4,15 @@ import { StyleSheet, View, Text } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Colors } from '../../src/theme';
 
-const TabIcon = ({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) => (
-  <View style={[styles.tabItem, focused && styles.tabItemActive]}>
-    <Text style={[styles.emoji, focused && styles.emojiActive]}>{emoji}</Text>
-    <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+const TabIcon = ({ icon, label, focused }: { icon: string; label: string; focused: boolean }) => (
+  <View style={styles.tabItem}>
+    <Text style={[styles.icon, focused && styles.iconActive]}>{icon}</Text>
+    <Text
+      style={[styles.tabLabel, focused && styles.tabLabelActive]}
+      numberOfLines={1}
+    >
+      {label}
+    </Text>
     {focused && <View style={[styles.glowDot, { backgroundColor: Colors.tenant.accent }]} />}
   </View>
 );
@@ -28,19 +33,25 @@ export default function TenantLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" label="Dashboard" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="◉" label="Dashboard" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="technicians"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👥" label="Team" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="◎" label="Team" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="jobs"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📋" label="Jobs" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="☰" label="Jobs" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon icon="○" label="Profile" focused={focused} />,
         }}
       />
     </Tabs>
@@ -49,21 +60,21 @@ export default function TenantLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    position: 'absolute', bottom: 20, left: 20, right: 20,
-    borderRadius: 20, height: 70, borderTopWidth: 0,
-    backgroundColor: 'rgba(10, 14, 39, 0.85)',
-    borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)',
-    paddingTop: 8, elevation: 8,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    height: 64, borderTopWidth: 0,
+    backgroundColor: 'rgba(10, 14, 39, 0.92)',
+    borderWidth: 0,
+    paddingTop: 6, paddingBottom: 0, elevation: 10,
   },
-  tabItem: { alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
-  tabItemActive: { transform: [{ scale: 1.1 }] },
-  emoji: { fontSize: 22, opacity: 0.5 },
-  emojiActive: { opacity: 1, fontSize: 24 },
-  tabLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  tabItem: { alignItems: 'center', justifyContent: 'center', minWidth: 56, paddingTop: 2 },
+  icon: { fontSize: 22, color: Colors.textMuted, fontWeight: '700', lineHeight: 26 },
+  iconActive: { color: Colors.tenant.accent, fontSize: 24 },
+  tabLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 1, fontFamily: 'Inter_500Medium' },
   tabLabelActive: { color: Colors.tenant.accent, fontFamily: 'Inter_600SemiBold' },
   glowDot: {
-    width: 4, height: 4, borderRadius: 2, marginTop: 3,
+    width: 4, height: 4, borderRadius: 2, marginTop: 2,
     shadowColor: Colors.tenant.accent,
-    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6, elevation: 4,
   },
 });

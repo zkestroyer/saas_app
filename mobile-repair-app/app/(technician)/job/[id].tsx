@@ -190,7 +190,8 @@ const styles = StyleSheet.create({
   pathText: { flex: 1 },
   checkmark: { fontSize: 20, color: Colors.success },
   bottomBar: {
-    padding: Spacing.l, paddingBottom: Spacing.xl,
+    padding: Spacing.l, paddingBottom: 36,
     borderTopWidth: 1, borderTopColor: Colors.border,
+    backgroundColor: '#0D0A05',
   },
 });

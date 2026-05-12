@@ -278,7 +278,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: Colors.borderLight,
   },
   bottomBar: {
-    padding: Spacing.l, paddingBottom: Spacing.xl,
+    padding: Spacing.l, paddingBottom: 36,
     borderTopWidth: 1, borderTopColor: Colors.border,
+    backgroundColor: '#0D0A05',
   },
 });

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, Image, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp, Layout } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors, Spacing, Radius, Typography } from '../../src/theme';
 import { GlassView } from '../../src/components/ui/glass-view';
 import { Input } from '../../src/components/ui/input';
@@ -15,9 +16,14 @@ import { IssueCategory, ServiceType } from '../../src/types';
 const STEPS = ['Device', 'Issue', 'Details', 'Service'] as const;
 
 const BRANDS = ['Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Huawei', 'Other'];
-const BRAND_EMOJI: Record<string, string> = {
-  Apple: '🍎', Samsung: '📱', Google: '🔷', OnePlus: '🔴',
-  Xiaomi: '🟠', Huawei: '🟡', Other: '📲',
+const BRAND_INITIALS: Record<string, { letter: string; bg: string }> = {
+  Apple: { letter: 'A', bg: '#333' },
+  Samsung: { letter: 'S', bg: '#1428A0' },
+  Google: { letter: 'G', bg: '#4285F4' },
+  OnePlus: { letter: '1+', bg: '#F5010C' },
+  Xiaomi: { letter: 'Mi', bg: '#FF6900' },
+  Huawei: { letter: 'Hw', bg: '#CF0A2C' },
+  Other: { letter: '?', bg: '#555' },
 };
 
 const ISSUE_CATEGORIES = [
@@ -40,6 +46,7 @@ export default function BookingScreen() {
   const [description, setDescription] = useState('');
   const [serviceType, setServiceType] = useState<ServiceType | null>(null);
   const [address, setAddress] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
 
   const canNext = () => {
     switch (step) {
@@ -113,7 +120,9 @@ export default function BookingScreen() {
                       style={[styles.brandCard, brand === b && styles.brandSelected]}
                       borderColor={brand === b ? Colors.customer.primary : Colors.border}
                     >
-                      <Text style={styles.brandEmoji}>{BRAND_EMOJI[b]}</Text>
+                      <View style={[styles.brandIcon, { backgroundColor: BRAND_INITIALS[b]?.bg ?? '#555' }]}>
+                        <Text style={styles.brandInitial}>{BRAND_INITIALS[b]?.letter ?? b[0]}</Text>
+                      </View>
                       <Text style={[Typography.caption, { color: brand === b ? Colors.customer.accent : Colors.textSecondary }]}>
                         {b}
                       </Text>
@@ -181,14 +190,45 @@ export default function BookingScreen() {
                 testID="issue-description"
               />
 
-              <HapticPress style={styles.photoButton} onPress={() => { /* expo-image-picker */ }}>
+              <HapticPress style={styles.photoButton} onPress={async () => {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') {
+                  Alert.alert('Permission needed', 'Please allow photo access to upload damage images.');
+                  return;
+                }
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ['images'],
+                  allowsMultipleSelection: true,
+                  quality: 0.7,
+                  selectionLimit: 4,
+                });
+                if (!result.canceled && result.assets) {
+                  setPhotos(prev => [...prev, ...result.assets.map(a => a.uri)].slice(0, 4));
+                }
+              }}>
                 <GlassView style={styles.photoCard}>
-                  <Text style={{ fontSize: 32 }}>📸</Text>
+                  <Text style={{ fontSize: 28 }}>📷</Text>
                   <Text style={[Typography.bodySmall, { color: Colors.textSecondary }]}>
-                    Add photos of the damage
+                    {photos.length > 0 ? `${photos.length} photo(s) added — tap to add more` : 'Tap to add photos of damage'}
                   </Text>
                 </GlassView>
               </HapticPress>
+
+              {photos.length > 0 && (
+                <View style={styles.photoRow}>
+                  {photos.map((uri, idx) => (
+                    <View key={idx} style={styles.photoThumb}>
+                      <Image source={{ uri }} style={styles.photoImg} />
+                      <Pressable
+                        style={styles.photoRemove}
+                        onPress={() => setPhotos(prev => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Text style={{ color: '#fff', fontSize: 12 }}>✕</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
             </Animated.View>
           )}
 
@@ -243,7 +283,7 @@ export default function BookingScreen() {
             </Animated.View>
           )}
 
-          <View style={{ height: Spacing.xl }} />
+          <View style={{ height: Spacing.xxl }} />
         </ScrollView>
 
         {/* Bottom CTA */}
@@ -291,7 +331,8 @@ const styles = StyleSheet.create({
   brandGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.s },
   brandCard: { width: 80, height: 80, alignItems: 'center', justifyContent: 'center', padding: Spacing.s },
   brandSelected: { backgroundColor: Colors.customer.surface },
-  brandEmoji: { fontSize: 28, marginBottom: 4 },
+  brandIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  brandInitial: { fontSize: 14, fontFamily: 'Inter_700Bold', color: '#FFFFFF' },
   issueGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.s },
   issueCard: { width: '47%' as any, padding: Spacing.m, alignItems: 'center', gap: Spacing.s },
   issueSelected: { backgroundColor: Colors.customer.surface },
@@ -305,7 +346,22 @@ const styles = StyleSheet.create({
   serviceSelected: { backgroundColor: Colors.customer.surface },
   serviceText: { flex: 1 },
   bottomBar: {
-    padding: Spacing.l, paddingBottom: Spacing.xl,
+    padding: Spacing.l, paddingBottom: 90,
     borderTopWidth: 1, borderTopColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  photoRow: {
+    flexDirection: 'row', gap: Spacing.s, marginTop: Spacing.m, flexWrap: 'wrap',
+  },
+  photoThumb: {
+    width: 72, height: 72, borderRadius: Radius.s, overflow: 'hidden', position: 'relative',
+  },
+  photoImg: {
+    width: '100%', height: '100%',
+  },
+  photoRemove: {
+    position: 'absolute', top: 2, right: 2,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
   },
 });

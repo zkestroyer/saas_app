@@ -71,7 +71,7 @@ export default function CustomerHome() {
             <Text style={[Typography.bodySmall, styles.greeting]}>
               Good {getTimeOfDay()} 👋
             </Text>
-            <Text style={[Typography.h1, styles.name]}>
+            <Text style={[Typography.h1, styles.name]} numberOfLines={1}>
               {user?.name ?? 'Customer'}
             </Text>
           </Animated.View>
@@ -88,7 +88,9 @@ export default function CustomerHome() {
                 end={{ x: 1, y: 1 }}
                 style={styles.heroCard}
               >
-                <Text style={styles.heroEmoji}>🛠️</Text>
+                <View style={styles.heroIconWrap}>
+                  <Text style={styles.heroIcon}>🔧</Text>
+                </View>
                 <View style={styles.heroText}>
                   <Text style={[Typography.h3, { color: Colors.white }]}>
                     Book a Repair
@@ -107,14 +109,14 @@ export default function CustomerHome() {
             <StatCard
               title="Active Repairs"
               value="1"
-              icon={<Text style={{ fontSize: 18 }}>🔧</Text>}
+              icon={<View style={styles.statIconWrap}><Text style={styles.statIcon}>🔧</Text></View>}
               delay={300}
               testID="stat-active"
             />
             <StatCard
               title="Completed"
               value="12"
-              icon={<Text style={{ fontSize: 18 }}>✅</Text>}
+              icon={<View style={styles.statIconWrap}><Text style={styles.statIcon}>✓</Text></View>}
               change={8.3}
               delay={400}
               testID="stat-completed"
@@ -141,18 +143,18 @@ export default function CustomerHome() {
                 >
                   <GlassView style={styles.jobCard}>
                     <View style={styles.jobHeader}>
-                      <View>
-                        <Text style={[Typography.h4, { color: Colors.textPrimary }]}>
+                      <View style={{ flex: 1, marginRight: Spacing.s }}>
+                        <Text style={[Typography.h4, { color: Colors.textPrimary }]} numberOfLines={1}>
                           {job.device}
                         </Text>
-                        <Text style={[Typography.bodySmall, { color: Colors.textSecondary }]}>
+                        <Text style={[Typography.bodySmall, { color: Colors.textSecondary }]} numberOfLines={1}>
                           {job.issue}
                         </Text>
                       </View>
                       <Badge label={badge.label} variant={badge.variant} size="sm" />
                     </View>
                     <View style={styles.jobFooter}>
-                      <Text style={[Typography.caption, { color: Colors.textMuted }]}>
+                      <Text style={[Typography.caption, { color: Colors.textMuted }]} numberOfLines={1}>
                         {job.technician ? `🔧 ${job.technician}` : '⏳ Awaiting assignment'}
                       </Text>
                       <Text style={[Typography.caption, { color: Colors.textMuted }]}>
@@ -165,8 +167,8 @@ export default function CustomerHome() {
             );
           })}
 
-          {/* Bottom spacer for floating tab bar */}
-          <View style={{ height: 100 }} />
+          {/* Bottom spacer for tab bar */}
+          <View style={{ height: 80 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -193,7 +195,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: Spacing.l,
   },
-  heroEmoji: { fontSize: 36, marginRight: Spacing.m },
+  heroIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.m,
+  },
+  heroIcon: { fontSize: 22 },
   heroText: { flex: 1 },
   heroArrow: { fontSize: 24, color: Colors.white, opacity: 0.7 },
   statsRow: {
@@ -201,6 +212,15 @@ const styles = StyleSheet.create({
     gap: Spacing.m,
     marginBottom: Spacing.l,
   },
+  statIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statIcon: { fontSize: 16 },
   sectionTitle: {
     color: Colors.textPrimary,
     marginBottom: Spacing.m,

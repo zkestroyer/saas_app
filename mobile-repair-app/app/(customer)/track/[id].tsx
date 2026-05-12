@@ -17,12 +17,12 @@ import { GlassView } from '../../../src/components/ui/glass-view';
 import { Badge } from '../../../src/components/ui/badge';
 
 const TIMELINE = [
-  { step: 'Booking Received', time: '2:00 PM', done: true, emoji: '📋' },
-  { step: 'Technician Assigned', time: '2:15 PM', done: true, emoji: '🔧' },
-  { step: 'En Route to You', time: '2:30 PM', done: true, emoji: '🚗' },
-  { step: 'Diagnosing Device', time: '3:00 PM', done: true, emoji: '🔍' },
-  { step: 'Repairing', time: '3:30 PM', done: false, active: true, emoji: '⚡' },
-  { step: 'Completed', time: '—', done: false, emoji: '✅' },
+  { step: 'Booking Received', time: '2:00 PM', done: true, icon: '✓' },
+  { step: 'Technician Assigned', time: '2:15 PM', done: true, icon: '✓' },
+  { step: 'En Route to You', time: '2:30 PM', done: true, icon: '✓' },
+  { step: 'Diagnosing Device', time: '3:00 PM', done: true, icon: '✓' },
+  { step: 'Repairing', time: '3:30 PM', done: false, active: true, icon: '⚡' },
+  { step: 'Completed', time: '—', done: false, icon: '○' },
 ];
 
 /** Live repair tracking screen with pulse animation and progress timeline. */
@@ -65,7 +65,9 @@ export default function TrackRepair() {
             <Text style={[Typography.overline, { color: Colors.customer.accent }]}>
               TRACKING • #{id ?? '001'}
             </Text>
-            <Text style={[Typography.h1, styles.title]}>iPhone 15 Pro</Text>
+            <Text style={[Typography.h1, styles.title]} numberOfLines={1}>
+              iPhone 15 Pro
+            </Text>
             <Text style={[Typography.bodySmall, styles.sub]}>Screen Replacement</Text>
           </Animated.View>
 
@@ -85,7 +87,10 @@ export default function TrackRepair() {
                   <Animated.View style={[styles.pulseBg, pulseStyle]} />
                   <View style={styles.liveDot} />
                 </View>
-                <Text style={[Typography.bodySmall, { color: Colors.textPrimary }]}>
+                <Text
+                  style={[Typography.bodySmall, { color: Colors.textPrimary, flex: 1 }]}
+                  numberOfLines={2}
+                >
                   Technician Alex K. is repairing your device
                 </Text>
               </View>
@@ -108,14 +113,23 @@ export default function TrackRepair() {
                   item.done && styles.timelineDotDone,
                   (item as any).active && styles.timelineDotActive,
                 ]}>
-                  <Text style={{ fontSize: 14 }}>{item.emoji}</Text>
+                  <Text style={[
+                    styles.timelineDotIcon,
+                    item.done && { color: Colors.success },
+                    (item as any).active && { color: Colors.customer.accent },
+                  ]}>
+                    {item.icon}
+                  </Text>
                 </View>
                 {/* Content */}
                 <View style={styles.timelineContent}>
-                  <Text style={[
-                    Typography.body,
-                    { color: item.done || (item as any).active ? Colors.textPrimary : Colors.textMuted },
-                  ]}>
+                  <Text
+                    style={[
+                      Typography.body,
+                      { color: item.done || (item as any).active ? Colors.textPrimary : Colors.textMuted },
+                    ]}
+                    numberOfLines={1}
+                  >
                     {item.step}
                   </Text>
                   <Text style={[Typography.caption, { color: Colors.textMuted }]}>
@@ -126,7 +140,7 @@ export default function TrackRepair() {
             ))}
           </Animated.View>
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 80 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -175,6 +189,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.customer.primary, backgroundColor: Colors.customer.surface,
     shadowColor: Colors.customer.accent, shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5, shadowRadius: 8, elevation: 4,
+  },
+  timelineDotIcon: {
+    fontSize: 14,
+    color: Colors.textMuted,
+    fontFamily: 'Inter_700Bold',
   },
   timelineContent: { flex: 1 },
 });

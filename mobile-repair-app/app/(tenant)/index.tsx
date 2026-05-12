@@ -113,7 +113,7 @@ export default function TenantDashboard() {
             </GlassView>
           </Animated.View>
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 80 }} />
         </ScrollView>
       </SafeAreaView>
     </View>

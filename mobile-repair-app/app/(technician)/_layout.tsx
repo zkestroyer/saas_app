@@ -4,10 +4,15 @@ import { StyleSheet, View, Text } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Colors } from '../../src/theme';
 
-const TabIcon = ({ emoji, label, focused }: { emoji: string; label: string; focused: boolean }) => (
-  <View style={[styles.tabItem, focused && styles.tabItemActive]}>
-    <Text style={[styles.emoji, focused && styles.emojiActive]}>{emoji}</Text>
-    <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+const TabIcon = ({ icon, label, focused }: { icon: string; label: string; focused: boolean }) => (
+  <View style={styles.tabItem}>
+    <Text style={[styles.icon, focused && styles.iconActive]}>{icon}</Text>
+    <Text
+      style={[styles.tabLabel, focused && styles.tabLabelActive]}
+      numberOfLines={1}
+    >
+      {label}
+    </Text>
     {focused && <View style={[styles.glowDot, { backgroundColor: Colors.technician.accent }]} />}
   </View>
 );
@@ -28,7 +33,7 @@ export default function TechnicianLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" label="HUD" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="◉" label="HUD" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -39,27 +44,33 @@ export default function TechnicianLayout() {
         name="invoice/[id]"
         options={{ href: null }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon icon="○" label="Profile" focused={focused} />,
+        }}
+      />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
-    position: 'absolute', bottom: 20, left: 20, right: 20,
-    borderRadius: 20, height: 70, borderTopWidth: 0,
-    backgroundColor: 'rgba(10, 14, 39, 0.85)',
-    borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.2)',
-    paddingTop: 8, elevation: 8,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    height: 64, borderTopWidth: 0,
+    backgroundColor: 'rgba(10, 14, 39, 0.92)',
+    borderWidth: 0,
+    paddingTop: 6, paddingBottom: 0, elevation: 10,
   },
-  tabItem: { alignItems: 'center', justifyContent: 'center', paddingTop: 4 },
-  tabItemActive: { transform: [{ scale: 1.1 }] },
-  emoji: { fontSize: 22, opacity: 0.5 },
-  emojiActive: { opacity: 1, fontSize: 24 },
-  tabLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  tabItem: { alignItems: 'center', justifyContent: 'center', minWidth: 56, paddingTop: 2 },
+  icon: { fontSize: 22, color: Colors.textMuted, fontWeight: '700', lineHeight: 26 },
+  iconActive: { color: Colors.technician.accent, fontSize: 24 },
+  tabLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 1, fontFamily: 'Inter_500Medium' },
   tabLabelActive: { color: Colors.technician.accent, fontFamily: 'Inter_600SemiBold' },
   glowDot: {
-    width: 4, height: 4, borderRadius: 2, marginTop: 3,
+    width: 4, height: 4, borderRadius: 2, marginTop: 2,
     shadowColor: Colors.technician.accent,
-    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6, elevation: 4,
   },
 });

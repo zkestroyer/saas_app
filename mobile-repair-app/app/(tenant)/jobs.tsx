@@ -65,7 +65,7 @@ export default function JobsScreen() {
             );
           })}
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 80 }} />
         </ScrollView>
       </SafeAreaView>
     </View>

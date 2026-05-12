@@ -6,11 +6,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { Colors, Spacing, Typography } from '../../src/theme';
+import { Colors, Spacing, Radius, Typography } from '../../src/theme';
 import { Input } from '../../src/components/ui/input';
 import { Button } from '../../src/components/ui/button';
 import { useAuthStore } from '../../src/stores/auth-store';
@@ -56,9 +57,9 @@ export default function LoginScreen() {
   };
 
   const roles = [
-    { role: UserRole.CUSTOMER, label: '📱 Customer', color: '#206BC4' },
-    { role: UserRole.TECHNICIAN, label: '🔧 Technician', color: '#F59E0B' },
-    { role: UserRole.TENANT, label: '🏢 Business', color: '#8B5CF6' },
+    { role: UserRole.CUSTOMER, label: 'Customer', icon: '👤', color: '#206BC4' },
+    { role: UserRole.TECHNICIAN, label: 'Technician', icon: '🔧', color: '#F59E0B' },
+    { role: UserRole.TENANT, label: 'Business', icon: '🏢', color: '#8B5CF6' },
   ];
 
   return (
@@ -88,7 +89,7 @@ export default function LoginScreen() {
           </Text>
         </Animated.View>
 
-        {/* Role Selector */}
+        {/* Role Selector — pill buttons, no wrapping */}
         <Animated.View
           entering={FadeInDown.delay(200).springify()}
           style={styles.roleSelector}
@@ -97,24 +98,31 @@ export default function LoginScreen() {
             SELECT YOUR ROLE
           </Text>
           <View style={styles.roleRow}>
-            {roles.map(({ role, label, color }) => (
-              <Button
-                key={role}
-                label={label}
-                variant={selectedRole === role ? 'primary' : 'secondary'}
-                onPress={() => setSelectedRole(role)}
-                style={[
-                  styles.roleButton,
-                  selectedRole === role && {
-                    shadowColor: color,
-                    shadowOpacity: 0.4,
-                    shadowRadius: 12,
-                    elevation: 6,
-                  },
-                ]}
-                testID={`role-${role}`}
-              />
-            ))}
+            {roles.map(({ role, label, icon, color }) => {
+              const isSelected = selectedRole === role;
+              return (
+                <Pressable
+                  key={role}
+                  onPress={() => setSelectedRole(role)}
+                  style={[
+                    styles.rolePill,
+                    isSelected && { backgroundColor: color, borderColor: color },
+                  ]}
+                  testID={`role-${role}`}
+                >
+                  <Text style={styles.roleIcon}>{icon}</Text>
+                  <Text
+                    style={[
+                      styles.rolePillText,
+                      isSelected && { color: '#FFFFFF' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </Animated.View>
 
@@ -196,8 +204,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.s,
   },
-  roleButton: {
+  rolePill: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: Radius.m,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surfaceElevated,
+  },
+  roleIcon: {
+    fontSize: 16,
+  },
+  rolePillText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+    color: Colors.textSecondary,
   },
   form: {
     gap: Spacing.m,
