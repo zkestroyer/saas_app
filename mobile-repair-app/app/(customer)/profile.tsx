@@ -79,7 +79,7 @@ export default function ProfileScreen() {
                   {user?.name ?? 'User'}
                 </Text>
                 <Text style={styles.headerEmail} numberOfLines={1}>
-                  {user?.email ?? 'user@repairpro.app'}
+                  {user?.email ?? 'user@revivix.app'}
                 </Text>
                 <View style={[styles.roleBadge, { backgroundColor: `${roleColor}20`, borderColor: `${roleColor}40` }]}>
                   <Text style={{ fontSize: 12, fontFamily: 'Inter_500Medium', color: roleColor }}>{roleLabel}</Text>
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
                 </HapticPress>
 
                 {/* Help */}
-                <HapticPress onPress={() => Alert.alert('Help & Support', 'Email: support@repairpro.app\nPhone: +1 800 FIX PHONE\n\nOur team is available Mon-Sat, 9AM-6PM.')} testID="menu-help">
+                <HapticPress onPress={() => Alert.alert('Help & Support', 'Email: support@revivix.app\nPhone: +1 800 FIX PHONE\n\nOur team is available Mon-Sat, 9AM-6PM.')} testID="menu-help">
                   <View style={[styles.menuItem, styles.menuBorder]}>
                     <Text style={styles.menuIcon}>❓</Text>
                     <Text style={styles.menuLabel}>Help & Support</Text>
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
                 </HapticPress>
 
                 {/* Terms */}
-                <HapticPress onPress={() => Alert.alert('Terms of Service', 'By using RepairPro, you agree to our Terms of Service and Privacy Policy. Full terms available at repairpro.app/terms')} testID="menu-terms">
+                <HapticPress onPress={() => Alert.alert('Terms of Service', 'By using Revivix, you agree to our Terms of Service and Privacy Policy. Full terms available at revivix.app/terms')} testID="menu-terms">
                   <View style={styles.menuItem}>
                     <Text style={styles.menuIcon}>📄</Text>
                     <Text style={styles.menuLabel}>Terms of Service</Text>
@@ -206,7 +206,7 @@ export default function ProfileScreen() {
             </Animated.View>
           )}
 
-          <Text style={styles.version}>RepairPro v1.0.0</Text>
+          <Text style={styles.version}>Revivix v1.0.0</Text>
           <View style={{ height: 80 }} />
         </ScrollView>
       </SafeAreaView>

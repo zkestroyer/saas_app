@@ -1,4 +1,4 @@
-/** Design tokens for the RepairPro dual-theme system.
+/** Design tokens for the Revivix dual-theme system.
  * Customer ("Clean Tech") uses cyan/blue accents.
  * Technician ("Industrial Pro") uses amber/orange accents.
  */

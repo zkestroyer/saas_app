@@ -45,7 +45,7 @@ export default function LoginScreen() {
         : selectedRole === UserRole.TENANT
           ? 'Sarah Owner'
           : 'Demo Customer',
-      email: email || 'demo@repairpro.app',
+      email: email || 'demo@revivix.app',
       avatar_url: null,
       phone: '+1234567890',
       created_at: new Date().toISOString(),
@@ -82,7 +82,7 @@ export default function LoginScreen() {
           entering={FadeInUp.delay(100).springify()}
           style={styles.header}
         >
-          <Text style={[Typography.overline, styles.brand]}>REPAIRPRO</Text>
+          <Text style={[Typography.overline, styles.brand]}>REVIVIX</Text>
           <Text style={[Typography.h1, styles.title]}>Welcome{'\n'}Back</Text>
           <Text style={[Typography.bodySmall, styles.subtitle]}>
             Sign in to manage your repairs

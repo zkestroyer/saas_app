@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "RepairPro",
+    "name": "Revivix",
     "slug": "repair-pro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "repairpro",
+    "scheme": "revivix",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,14 +15,20 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.repairpro.app"
+      "bundleIdentifier": "com.revivix.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0E27"
       },
-      "package": "com.repairpro.app"
+      "package": "com.revivix.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,13 +39,21 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow RepairPro to access photos for device damage documentation.",
-          "cameraPermission": "Allow RepairPro to take photos of devices for assessment."
+          "photosPermission": "Allow Revivix to access photos for device damage documentation.",
+          "cameraPermission": "Allow Revivix to take photos of devices for assessment."
         }
-      ]
+      ],
+      "expo-splash-screen"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5e73907f-3ee9-4e3f-b855-bfa38db4e233"
+      }
+    },
+    "owner": "zainabkhan05"
   }
 }

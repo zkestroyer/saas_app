@@ -1,4 +1,4 @@
-/** Global TypeScript type definitions for RepairPro.
+/** Global TypeScript type definitions for Revivix.
  * Per Code_standards.md: PascalCase types, no implicit any.
  */
 

@@ -34,7 +34,7 @@ export default function RegisterScreen() {
         />
 
         <Animated.View entering={FadeInDown.delay(100).springify()}>
-          <Text style={[Typography.overline, styles.brand]}>REPAIRPRO</Text>
+          <Text style={[Typography.overline, styles.brand]}>REVIVIX</Text>
           <Text style={[Typography.h1, styles.title]}>Create{'\n'}Account</Text>
           <Text style={[Typography.bodySmall, styles.subtitle]}>
             Join the premium repair network
