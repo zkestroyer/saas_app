@@ -5,7 +5,7 @@
 
 ## 1. Architecture Overview
 
-Revivix follows a **client-server architecture** with a React Native mobile client communicating with Supabase BaaS.
+Revivix follows a **multi-tenant SaaS architecture** with a React Native mobile client communicating with a Supabase-powered backend.
 
 ```
 ┌─────────────────────────────────┐
@@ -23,7 +23,7 @@ Revivix follows a **client-server architecture** with a React Native mobile clie
 └──────────────┼─────────────────┘
                │ HTTPS
 ┌──────────────▼─────────────────┐
-│         Supabase BaaS          │
+│      Supabase Backend (Managed)  │
 │  ┌──────────┐  ┌────────────┐  │
 │  │PostgreSQL │  │    Auth    │  │
 │  │ (7 tables)│  │   (JWT)   │  │

@@ -40,7 +40,7 @@ export default function RootLayout() {
   });
   const [showSplash, setShowSplash] = useState(true);
   const { setUser, setLoading } = useAuthStore();
-  const notificationResponseListener = useRef<Notifications.EventSubscription>();
+  const notificationResponseListener = useRef<Notifications.EventSubscription | null>(null);
 
   /* Listen for Supabase auth state changes (session restore on app restart). */
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function RootLayout() {
         const data = response.notification.request.content.data;
         /* Navigate to relevant screen based on notification data */
         if (data?.jobId) {
-          router.push(`/(customer)/track/${data.jobId}`);
+          router.push(`/(customer)/track/${data.jobId}` as any);
         } else if (data?.invoiceId) {
           router.push('/(customer)/invoices');
         }
@@ -87,7 +87,7 @@ export default function RootLayout() {
 
     return () => {
       if (notificationResponseListener.current) {
-        Notifications.removeNotificationSubscription(notificationResponseListener.current);
+        notificationResponseListener.current.remove();
       }
     };
   }, []);

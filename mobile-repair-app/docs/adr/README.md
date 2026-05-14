@@ -6,7 +6,7 @@ This directory contains all Architecture Decision Records (ADRs) for the Revivix
 
 | ADR | Title | Status | Date | Category |
 |-----|-------|--------|------|----------|
-| [ADR-001](./ADR-001-supabase-as-baas.md) | Use Supabase as Backend-as-a-Service | Accepted | 2026-05-10 | Backend Platform |
+| [ADR-001](./ADR-001-supabase-backend-platform.md) | Use Supabase as the Managed Backend Platform | Accepted | 2026-05-10 | Backend Platform |
 | [ADR-002](./ADR-002-react-native-expo-managed.md) | React Native + Expo Managed Workflow | Accepted | 2026-05-10 | Mobile Framework |
 | [ADR-003](./ADR-003-multi-tenant-rls.md) | Multi-Tenant Architecture via RLS | Accepted | 2026-05-10 | Data Isolation |
 | [ADR-004](./ADR-004-zustand-tanstack-query.md) | Zustand + TanStack Query State Management | Accepted | 2026-05-10 | Client Architecture |

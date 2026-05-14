@@ -1,4 +1,4 @@
-# ADR-001: Use Supabase as Backend-as-a-Service (BaaS)
+# ADR-001: Use Supabase as the Managed Backend Platform
 
 - **Status:** Accepted
 - **Date:** 2026-05-10

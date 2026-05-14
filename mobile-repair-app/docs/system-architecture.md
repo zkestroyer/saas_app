@@ -13,7 +13,7 @@
 
 Revivix is a **multi-tenant SaaS platform** for mobile repair businesses. It provides end-to-end workflow management from customer booking through technician dispatch, device repair, dynamic invoicing, and payment collection.
 
-The system is built on a **Backend-as-a-Service (BaaS) architecture** using Supabase (PostgreSQL + Auth + Storage + Realtime) with a React Native mobile client powered by Expo SDK 54.
+The system is built on a **multi-tenant SaaS architecture** powered by Supabase (PostgreSQL + Auth + Storage + Realtime) as the managed backend, with a React Native mobile client powered by Expo SDK 54.
 
 ---
 
