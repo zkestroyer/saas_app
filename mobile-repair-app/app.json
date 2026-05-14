@@ -43,7 +43,15 @@
           "cameraPermission": "Allow Revivix to take photos of devices for assessment."
         }
       ],
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0A0E27",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

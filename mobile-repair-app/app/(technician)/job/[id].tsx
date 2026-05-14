@@ -1,37 +1,70 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useQuery } from '@tanstack/react-query';
 import { Colors, Spacing, Typography } from '../../../src/theme';
 import { GlassView } from '../../../src/components/ui/glass-view';
 import { Button } from '../../../src/components/ui/button';
 import { Badge } from '../../../src/components/ui/badge';
 import { Input } from '../../../src/components/ui/input';
 import { HapticPress } from '../../../src/components/ui/haptic-press';
+import { useAuthStore } from '../../../src/stores/auth-store';
+import * as jobService from '../../../src/services/job-service';
+import * as receivingNoteService from '../../../src/services/receiving-note-service';
 
 /** Job detail + assessment screen with on-spot vs shop branching logic. */
 export default function JobDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const user = useAuthStore((s) => s.user);
   const [diagnosis, setDiagnosis] = useState('');
+  const [deviceCondition, setDeviceCondition] = useState('');
   const [repairPath, setRepairPath] = useState<'onspot' | 'shop' | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /* Fetch real job data from Supabase */
+  const { data: jobResult, isLoading } = useQuery({
+    queryKey: ['job', id],
+    queryFn: () => jobService.getJobById(id ?? ''),
+    enabled: !!id,
+  });
+
+  const job = jobResult?.data;
 
   const handlePathSelect = (path: 'onspot' | 'shop') => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setRepairPath(path);
   };
 
-  const handleStartRepair = () => {
+  const handleStartRepair = async () => {
+    if (!user?.id || !id) return;
+    setIsSubmitting(true);
+
     if (repairPath === 'onspot') {
+      /* Path A: Update status and go to invoice */
+      await jobService.updateJobStatus(id, 'repairing' as any, user.id);
+      setIsSubmitting(false);
       router.push(`/(technician)/invoice/${id}`);
     } else {
-      /* Generate receiving note flow */
+      /* Path B: Create receiving note, update status, then go to invoice */
+      await receivingNoteService.createReceivingNote({
+        job_id: id,
+        device_condition: deviceCondition || diagnosis || 'Device received for shop repair',
+        damage_photos: [],
+        customer_signature_url: null,
+        notes: diagnosis,
+      }, user.id);
+
+      await jobService.updateJobStatus(id, 'repairing' as any, user.id);
+      setIsSubmitting(false);
+
       Alert.alert(
-        'Device Receiving Note',
-        'Receiving note generated. Device taken to shop for repair.',
-        [{ text: 'OK', onPress: () => router.push(`/(technician)/invoice/${id}`) }],
+        'Receiving Note Created',
+        'Device receiving note has been generated and saved. Device taken to shop for repair.',
+        [{ text: 'Build Invoice', onPress: () => router.push(`/(technician)/invoice/${id}`) }],
       );
     }
   };
@@ -56,12 +89,14 @@ export default function JobDetail() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoEmoji}>📱</Text>
                 <View style={styles.infoText}>
-                  <Text style={[Typography.h3, { color: Colors.textPrimary }]}>iPhone 15 Pro</Text>
+                  <Text style={[Typography.h3, { color: Colors.textPrimary }]}>
+                    {job ? `${job.device_brand} ${job.device_model}` : 'Loading...'}
+                  </Text>
                   <Text style={[Typography.bodySmall, { color: Colors.textSecondary }]}>
-                    Screen Crack • Sarah M.
+                    {job?.issue_category?.replace('_', ' ') ?? ''} • {(job as any)?.customer?.name ?? 'Customer'}
                   </Text>
                   <Text style={[Typography.caption, { color: Colors.textMuted, marginTop: 4 }]}>
-                    📍 12 Oak Avenue, Downtown
+                    📍 {typeof job?.location === 'object' ? (job?.location as any)?.address ?? '' : ''}
                   </Text>
                 </View>
               </View>

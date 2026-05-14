@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, Text, View, ScrollView, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInRight, Layout } from 'react-native-reanimated';
@@ -11,6 +11,9 @@ import { Button } from '../../../src/components/ui/button';
 import { Input } from '../../../src/components/ui/input';
 import { HapticPress } from '../../../src/components/ui/haptic-press';
 import { InvoiceItemType } from '../../../src/types';
+import { useAuthStore } from '../../../src/stores/auth-store';
+import * as invoiceService from '../../../src/services/invoice-service';
+import * as jobService from '../../../src/services/job-service';
 
 interface LineItem {
   id: string;
@@ -33,39 +36,93 @@ const TYPE_EMOJI: Record<InvoiceItemType, string> = {
   [InvoiceItemType.DISPATCH]: '🚗',
 };
 
-/** Dynamic invoice builder — CRITICAL: remains editable until payment lock. */
+/** Dynamic invoice builder — CRITICAL: remains editable until payment lock.
+ *  Now backed by real Supabase persistence via invoice-service.
+ */
 export default function InvoiceBuilder() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [items, setItems] = useState<LineItem[]>(INITIAL_ITEMS);
+  const user = useAuthStore((s) => s.user);
+  const [items, setItems] = useState<LineItem[]>([]);
   const [isLocked, setIsLocked] = useState(false);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [newDesc, setNewDesc] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [invoiceTotal, setInvoiceTotal] = useState({ subtotal: 0, tax: 0, total: 0 });
+
+  /* On mount: fetch or create the invoice for this job */
+  useEffect(() => {
+    (async () => {
+      if (!id || !user?.id) return;
+
+      /* Try to fetch existing invoice */
+      const existing = await invoiceService.getInvoiceByJobId(id);
+      if (existing.success && existing.data) {
+        setInvoiceId(existing.data.id);
+        setIsLocked(existing.data.is_locked);
+        const fetchedItems = (existing.data as any).items ?? [];
+        setItems(fetchedItems.map((i: any) => ({
+          id: i.id,
+          type: i.type,
+          description: i.description,
+          quantity: i.quantity,
+          unitPrice: Number(i.unit_price),
+        })));
+        setInvoiceTotal({
+          subtotal: Number(existing.data.subtotal),
+          tax: Number(existing.data.tax_amount),
+          total: Number(existing.data.total),
+        });
+      } else {
+        /* Create new draft invoice */
+        const created = await invoiceService.createInvoice(id, user.id);
+        if (created.success && created.data) {
+          setInvoiceId(created.data.id);
+        }
+      }
+      setIsLoading(false);
+    })();
+  }, [id, user?.id]);
 
   const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
-  const addItem = useCallback(() => {
-    if (!newDesc || !newPrice) return;
+  const addItem = useCallback(async () => {
+    if (!newDesc || !newPrice || !invoiceId || !user?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setItems((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        type: InvoiceItemType.PART,
-        description: newDesc,
-        quantity: 1,
-        unitPrice: parseFloat(newPrice) || 0,
-      },
-    ]);
+
+    const result = await invoiceService.addLineItem(invoiceId, {
+      type: InvoiceItemType.PART,
+      description: newDesc,
+      quantity: 1,
+      unit_price: parseFloat(newPrice) || 0,
+    }, user.id);
+
+    if (result.success && result.data) {
+      setItems((prev) => [
+        ...prev,
+        {
+          id: result.data!.id,
+          type: result.data!.type as InvoiceItemType,
+          description: result.data!.description,
+          quantity: result.data!.quantity,
+          unitPrice: Number(result.data!.unit_price),
+        },
+      ]);
+    }
     setNewDesc('');
     setNewPrice('');
-  }, [newDesc, newPrice]);
+  }, [newDesc, newPrice, invoiceId, user?.id]);
 
-  const removeItem = useCallback((itemId: string) => {
+  const removeItem = useCallback(async (itemId: string) => {
+    if (!invoiceId || !user?.id) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setItems((prev) => prev.filter((i) => i.id !== itemId));
-  }, []);
+    const result = await invoiceService.removeLineItem(itemId, invoiceId, user.id);
+    if (result.success) {
+      setItems((prev) => prev.filter((i) => i.id !== itemId));
+    }
+  }, [invoiceId, user?.id]);
 
   const lockInvoice = () => {
     Alert.alert(
@@ -76,9 +133,19 @@ export default function InvoiceBuilder() {
         {
           text: 'Lock & Send',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            if (!invoiceId || !user?.id) return;
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            setIsLocked(true);
+
+            const result = await invoiceService.lockInvoice(invoiceId, 'cash', user.id);
+            if (result.success) {
+              setIsLocked(true);
+              /* Also mark job as completed */
+              await jobService.updateJobStatus(id!, 'completed' as any, user.id);
+              Alert.alert('Invoice Locked', 'Payment recorded. Job marked as completed.');
+            } else {
+              Alert.alert('Error', result.message);
+            }
           },
         },
       ],
@@ -116,7 +183,7 @@ export default function InvoiceBuilder() {
                 JOB #{id}
               </Text>
               <Text style={[Typography.h4, { color: Colors.textPrimary }]}>
-                iPhone 15 Pro — Screen Replacement
+                {isLoading ? 'Loading...' : `Job #${id?.slice(0, 8).toUpperCase()}`}
               </Text>
               <Text style={[Typography.caption, { color: Colors.textSecondary }]}>
                 Customer: Sarah M.

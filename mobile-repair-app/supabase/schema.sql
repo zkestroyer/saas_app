@@ -147,7 +147,12 @@ CREATE TRIGGER trg_invoices_updated BEFORE UPDATE ON invoices FOR EACH ROW EXECU
 CREATE TRIGGER trg_invoice_items_updated BEFORE UPDATE ON invoice_items FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER trg_receiving_notes_updated BEFORE UPDATE ON receiving_notes FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
--- ─── ROW LEVEL SECURITY ────────────────────────────────────
+-- ═══════════════════════════════════════════════════════════
+-- ═══ ROW LEVEL SECURITY — COMPLETE POLICIES ═══════════════
+-- ═══════════════════════════════════════════════════════════
+-- Per ADR-003 (Multi-Tenant RLS) and ADR-006 (RBAC)
+-- Every table has RLS enabled with granular per-role policies.
+
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
@@ -156,23 +161,228 @@ ALTER TABLE invoice_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE receiving_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_trails ENABLE ROW LEVEL SECURITY;
 
--- Allow authenticated users to read their own data
+-- ─── Helper function: get current user's role ──────────────
+CREATE OR REPLACE FUNCTION get_user_role()
+RETURNS VARCHAR(20) AS $$
+  SELECT role FROM users WHERE id = auth.uid() AND deleted_at IS NULL;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- ─── Helper function: get current user's tenant ────────────
+CREATE OR REPLACE FUNCTION get_user_tenant_id()
+RETURNS UUID AS $$
+  SELECT tenant_id FROM users WHERE id = auth.uid() AND deleted_at IS NULL;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- ─── TENANTS POLICIES ──────────────────────────────────────
+
+-- Members can read their own tenant
+CREATE POLICY "Tenant members can read own tenant" ON tenants
+  FOR SELECT USING (
+    id IN (SELECT tenant_id FROM users WHERE id = auth.uid() AND deleted_at IS NULL)
+  );
+
+-- Super admin can read all tenants
+CREATE POLICY "Super admin reads all tenants" ON tenants
+  FOR SELECT USING (get_user_role() = 'super_admin');
+
+-- ─── USERS POLICIES ────────────────────────────────────────
+
+-- Users can read own profile
 CREATE POLICY "Users can read own profile" ON users
   FOR SELECT USING (auth.uid() = id);
 
+-- Users can update own profile
 CREATE POLICY "Users can update own profile" ON users
   FOR UPDATE USING (auth.uid() = id);
 
+-- Tenant owners can read all users in their tenant
+CREATE POLICY "Tenant reads team members" ON users
+  FOR SELECT USING (
+    tenant_id = get_user_tenant_id() AND get_user_role() = 'tenant'
+  );
+
+-- Technicians can read customer profiles (for assigned jobs)
+CREATE POLICY "Technicians read customers" ON users
+  FOR SELECT USING (
+    get_user_role() = 'technician'
+    AND id IN (
+      SELECT customer_id FROM jobs
+      WHERE technician_id = auth.uid() AND deleted_at IS NULL
+    )
+  );
+
+-- Authenticated users can insert their own profile (registration)
+CREATE POLICY "Users can insert own profile" ON users
+  FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- Super admin can read all users
+CREATE POLICY "Super admin reads all users" ON users
+  FOR SELECT USING (get_user_role() = 'super_admin');
+
+-- ─── JOBS POLICIES ─────────────────────────────────────────
+
 -- Customers can read their own jobs
 CREATE POLICY "Customers read own jobs" ON jobs
-  FOR SELECT USING (auth.uid() = customer_id);
+  FOR SELECT USING (auth.uid() = customer_id AND deleted_at IS NULL);
+
+-- Customers can create jobs
+CREATE POLICY "Customers can create jobs" ON jobs
+  FOR INSERT WITH CHECK (auth.uid() = customer_id);
 
 -- Technicians can read assigned jobs
 CREATE POLICY "Technicians read assigned jobs" ON jobs
-  FOR SELECT USING (auth.uid() = technician_id);
+  FOR SELECT USING (auth.uid() = technician_id AND deleted_at IS NULL);
+
+-- Technicians can update assigned jobs (status changes)
+CREATE POLICY "Technicians update assigned jobs" ON jobs
+  FOR UPDATE USING (auth.uid() = technician_id);
 
 -- Tenant owners can read all tenant jobs
 CREATE POLICY "Tenant reads all jobs" ON jobs
   FOR SELECT USING (
-    tenant_id IN (SELECT tenant_id FROM users WHERE id = auth.uid() AND role = 'tenant')
+    tenant_id = get_user_tenant_id() AND get_user_role() = 'tenant'
   );
+
+-- Tenant owners can update jobs (assign technicians)
+CREATE POLICY "Tenant updates jobs" ON jobs
+  FOR UPDATE USING (
+    tenant_id = get_user_tenant_id() AND get_user_role() = 'tenant'
+  );
+
+-- Super admin can read all jobs
+CREATE POLICY "Super admin reads all jobs" ON jobs
+  FOR SELECT USING (get_user_role() = 'super_admin');
+
+-- ─── INVOICES POLICIES ─────────────────────────────────────
+
+-- Customers can read invoices for their jobs
+CREATE POLICY "Customers read own invoices" ON invoices
+  FOR SELECT USING (
+    job_id IN (SELECT id FROM jobs WHERE customer_id = auth.uid() AND deleted_at IS NULL)
+    AND deleted_at IS NULL
+  );
+
+-- Technicians can read invoices for assigned jobs
+CREATE POLICY "Technicians read assigned invoices" ON invoices
+  FOR SELECT USING (
+    job_id IN (SELECT id FROM jobs WHERE technician_id = auth.uid() AND deleted_at IS NULL)
+    AND deleted_at IS NULL
+  );
+
+-- Technicians can create invoices for assigned jobs
+CREATE POLICY "Technicians create invoices" ON invoices
+  FOR INSERT WITH CHECK (
+    job_id IN (SELECT id FROM jobs WHERE technician_id = auth.uid() AND deleted_at IS NULL)
+  );
+
+-- Technicians can update invoices for assigned jobs (when not locked)
+CREATE POLICY "Technicians update invoices" ON invoices
+  FOR UPDATE USING (
+    job_id IN (SELECT id FROM jobs WHERE technician_id = auth.uid() AND deleted_at IS NULL)
+  );
+
+-- Tenant owners can read all invoices for tenant jobs
+CREATE POLICY "Tenant reads all invoices" ON invoices
+  FOR SELECT USING (
+    job_id IN (SELECT id FROM jobs WHERE tenant_id = get_user_tenant_id() AND deleted_at IS NULL)
+    AND deleted_at IS NULL
+  );
+
+-- Super admin can read all invoices
+CREATE POLICY "Super admin reads all invoices" ON invoices
+  FOR SELECT USING (get_user_role() = 'super_admin');
+
+-- ─── INVOICE ITEMS POLICIES ────────────────────────────────
+
+-- Customers can read items for their invoices
+CREATE POLICY "Customers read own invoice items" ON invoice_items
+  FOR SELECT USING (
+    invoice_id IN (
+      SELECT i.id FROM invoices i
+      JOIN jobs j ON i.job_id = j.id
+      WHERE j.customer_id = auth.uid() AND i.deleted_at IS NULL AND j.deleted_at IS NULL
+    )
+    AND deleted_at IS NULL
+  );
+
+-- Technicians can read/create/update items for assigned job invoices
+CREATE POLICY "Technicians read invoice items" ON invoice_items
+  FOR SELECT USING (
+    invoice_id IN (
+      SELECT i.id FROM invoices i
+      JOIN jobs j ON i.job_id = j.id
+      WHERE j.technician_id = auth.uid() AND i.deleted_at IS NULL AND j.deleted_at IS NULL
+    )
+    AND deleted_at IS NULL
+  );
+
+CREATE POLICY "Technicians create invoice items" ON invoice_items
+  FOR INSERT WITH CHECK (
+    invoice_id IN (
+      SELECT i.id FROM invoices i
+      JOIN jobs j ON i.job_id = j.id
+      WHERE j.technician_id = auth.uid() AND i.is_locked = FALSE
+    )
+  );
+
+CREATE POLICY "Technicians update invoice items" ON invoice_items
+  FOR UPDATE USING (
+    invoice_id IN (
+      SELECT i.id FROM invoices i
+      JOIN jobs j ON i.job_id = j.id
+      WHERE j.technician_id = auth.uid() AND i.is_locked = FALSE
+    )
+  );
+
+-- Tenant owners can read all invoice items
+CREATE POLICY "Tenant reads all invoice items" ON invoice_items
+  FOR SELECT USING (
+    invoice_id IN (
+      SELECT i.id FROM invoices i
+      JOIN jobs j ON i.job_id = j.id
+      WHERE j.tenant_id = get_user_tenant_id() AND i.deleted_at IS NULL
+    )
+    AND deleted_at IS NULL
+  );
+
+-- ─── RECEIVING NOTES POLICIES ──────────────────────────────
+
+-- Technicians can create receiving notes for assigned jobs
+CREATE POLICY "Technicians create receiving notes" ON receiving_notes
+  FOR INSERT WITH CHECK (
+    job_id IN (SELECT id FROM jobs WHERE technician_id = auth.uid() AND deleted_at IS NULL)
+  );
+
+-- Technicians can read receiving notes for assigned jobs
+CREATE POLICY "Technicians read receiving notes" ON receiving_notes
+  FOR SELECT USING (
+    job_id IN (SELECT id FROM jobs WHERE technician_id = auth.uid() AND deleted_at IS NULL)
+    AND deleted_at IS NULL
+  );
+
+-- Customers can read receiving notes for their jobs
+CREATE POLICY "Customers read receiving notes" ON receiving_notes
+  FOR SELECT USING (
+    job_id IN (SELECT id FROM jobs WHERE customer_id = auth.uid() AND deleted_at IS NULL)
+    AND deleted_at IS NULL
+  );
+
+-- Tenant owners can read all receiving notes for tenant jobs
+CREATE POLICY "Tenant reads all receiving notes" ON receiving_notes
+  FOR SELECT USING (
+    job_id IN (SELECT id FROM jobs WHERE tenant_id = get_user_tenant_id() AND deleted_at IS NULL)
+    AND deleted_at IS NULL
+  );
+
+-- ─── AUDIT TRAILS POLICIES ─────────────────────────────────
+
+-- All authenticated users can insert audit records
+CREATE POLICY "Authenticated users can log audits" ON audit_trails
+  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Only super admin can read audit trails
+CREATE POLICY "Super admin reads audit trails" ON audit_trails
+  FOR SELECT USING (get_user_role() = 'super_admin');
+
+-- Audit records can NEVER be updated or deleted (immutable by design)
+-- No UPDATE or DELETE policies exist for audit_trails.

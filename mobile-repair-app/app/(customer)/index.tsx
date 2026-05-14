@@ -1,15 +1,16 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import { GlassView } from '../../src/components/ui/glass-view';
 import { Badge } from '../../src/components/ui/badge';
 import { HapticPress } from '../../src/components/ui/haptic-press';
 import { useAuthStore } from '../../src/stores/auth-store';
-import { useJobStore } from '../../src/stores/job-store';
+import * as jobService from '../../src/services/job-service';
 import { JobStatus } from '../../src/types';
 
 const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = {
@@ -22,11 +23,18 @@ const STATUS_BADGE: Record<string, { label: string; variant: 'success' | 'warnin
   [JobStatus.CANCELLED]: { label: 'Cancelled', variant: 'danger' },
 };
 
-/** Customer home dashboard with live data from job store. */
+/** Customer home dashboard with real Supabase data via TanStack Query. */
 export default function CustomerHome() {
   const user = useAuthStore((s) => s.user);
-  const jobs = useJobStore((s) => s.jobs);
 
+  /* Fetch real jobs from Supabase */
+  const { data: jobsResult, isLoading } = useQuery({
+    queryKey: ['customerJobs', user?.id],
+    queryFn: () => jobService.getCustomerJobs(user?.id ?? ''),
+    enabled: !!user?.id,
+  });
+
+  const jobs = jobsResult?.data ?? [];
   const activeCount = jobs.filter(j => j.status !== JobStatus.COMPLETED && j.status !== JobStatus.CANCELLED).length;
   const completedCount = jobs.filter(j => j.status === JobStatus.COMPLETED).length;
 

@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Stack } from 'expo-router';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import {
   useFonts,
   Inter_400Regular,
@@ -14,6 +15,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Colors } from '../src/theme';
 import AnimatedSplashScreen from '../src/components/splash-screen';
+import { useAuthStore } from '../src/stores/auth-store';
+import { supabase } from '../src/services/supabase';
+import { registerForPushNotifications } from '../src/services/notification-service';
 
 // Keep the native splash screen visible while fonts load
 SplashScreen.preventAutoHideAsync();
@@ -24,7 +28,9 @@ const queryClient = new QueryClient({
   },
 });
 
-/** Root layout — loads fonts, shows animated splash, wraps providers. */
+/** Root layout — loads fonts, shows animated splash, wraps providers.
+ * Handles Supabase auth state changes and push notification registration.
+ */
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -33,6 +39,58 @@ export default function RootLayout() {
     Inter_700Bold,
   });
   const [showSplash, setShowSplash] = useState(true);
+  const { setUser, setLoading } = useAuthStore();
+  const notificationResponseListener = useRef<Notifications.EventSubscription>();
+
+  /* Listen for Supabase auth state changes (session restore on app restart). */
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          /* Fetch full user profile from our users table */
+          const { data: profile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .is('deleted_at', null)
+            .single();
+
+          if (profile) {
+            setUser(profile as any);
+          } else {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      },
+    );
+
+    return () => { subscription.unsubscribe(); };
+  }, [setUser, setLoading]);
+
+  /* Register push notifications and handle notification taps. */
+  useEffect(() => {
+    registerForPushNotifications();
+
+    notificationResponseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        /* Navigate to relevant screen based on notification data */
+        if (data?.jobId) {
+          router.push(`/(customer)/track/${data.jobId}`);
+        } else if (data?.invoiceId) {
+          router.push('/(customer)/invoices');
+        }
+      });
+
+    return () => {
+      if (notificationResponseListener.current) {
+        Notifications.removeNotificationSubscription(notificationResponseListener.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {

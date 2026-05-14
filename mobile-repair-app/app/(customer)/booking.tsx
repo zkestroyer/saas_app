@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, Image, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Pressable, Image, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -13,7 +13,7 @@ import { Button } from '../../src/components/ui/button';
 import { HapticPress } from '../../src/components/ui/haptic-press';
 import { IssueCategory, ServiceType, JobStatus } from '../../src/types';
 import { useAuthStore } from '../../src/stores/auth-store';
-import { useJobStore } from '../../src/stores/job-store';
+import * as jobService from '../../src/services/job-service';
 
 const STEPS = ['Device', 'Issue', 'Details', 'Service'] as const;
 
@@ -44,7 +44,7 @@ const ISSUE_COLORS: Record<string, string> = {
 /** Multi-step booking form. */
 export default function BookingScreen() {
   const user = useAuthStore((s) => s.user);
-  const addJob = useJobStore((s) => s.addJob);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [step, setStep] = useState(0);
   const [brand, setBrand] = useState('');
@@ -65,16 +65,15 @@ export default function BookingScreen() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
-      /* Submit booking — create job in store */
-      const newJob = {
-        id: `job-${Date.now()}`,
+      /* Submit booking — create job via Supabase */
+      setIsSubmitting(true);
+      const result = await jobService.createJob({
         customer_id: user?.id ?? 'demo-user-001',
-        technician_id: null,
         tenant_id: user?.tenant_id ?? 'demo-tenant-001',
         device_brand: brand,
         device_model: model,
@@ -82,19 +81,19 @@ export default function BookingScreen() {
         description,
         photos,
         service_type: serviceType!,
-        status: JobStatus.PENDING,
         location: { address: address || 'Store Drop-off' },
-        scheduled_at: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: null,
-      };
-      addJob(newJob);
-      Alert.alert(
-        'Booking Submitted!',
-        `Your ${brand} ${model} repair has been booked. A technician will be assigned shortly.`,
-        [{ text: 'OK', onPress: () => router.replace('/(customer)') }],
-      );
+      });
+      setIsSubmitting(false);
+
+      if (result.success) {
+        Alert.alert(
+          'Booking Submitted!',
+          `Your ${brand} ${model} repair has been booked. A technician will be assigned shortly.`,
+          [{ text: 'OK', onPress: () => router.replace('/(customer)') }],
+        );
+      } else {
+        Alert.alert('Booking Failed', result.message || 'Please try again.');
+      }
     }
   };
 
@@ -328,10 +327,10 @@ export default function BookingScreen() {
         {/* Bottom CTA */}
         <View style={styles.bottomBar}>
           <Button
-            label={step === STEPS.length - 1 ? 'Submit Booking' : 'Continue'}
+            label={isSubmitting ? 'Submitting...' : step === STEPS.length - 1 ? 'Submit Booking' : 'Continue'}
             onPress={handleNext}
             fullWidth
-            disabled={!canNext()}
+            disabled={!canNext() || isSubmitting}
             testID="booking-next"
           />
         </View>

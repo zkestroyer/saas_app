@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -17,18 +18,50 @@ import { Button } from '../../src/components/ui/button';
 import { useAuthStore } from '../../src/stores/auth-store';
 import { useThemeStore } from '../../src/stores/theme-store';
 import { UserRole } from '../../src/types';
+import * as authService from '../../src/services/auth-service';
 
-/** Login screen with premium glassmorphism aesthetic. */
+/** Login screen with real Supabase authentication. */
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.CUSTOMER);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const setUser = useAuthStore((s) => s.setUser);
   const setRole = useThemeStore((s) => s.setRole);
 
-  const handleLogin = () => {
-    /* Demo login — sets mock user for MVP.
-     * In production, this calls supabase.auth.signInWithPassword(). */
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Please enter both email and password');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    const result = await authService.signIn(email.trim(), password);
+
+    if (result.success && result.data) {
+      const { user } = result.data;
+
+      /* Set theme based on user role from database */
+      const themeRole = user.role === UserRole.TECHNICIAN
+        ? 'technician'
+        : user.role === UserRole.TENANT
+          ? 'tenant'
+          : 'customer';
+
+      setRole(themeRole);
+      setUser(user);
+      router.replace('/');
+    } else {
+      setErrorMsg(result.message || 'Invalid email or password');
+      setIsLoading(false);
+    }
+  };
+
+  /** Demo login — for presentations when Supabase is not configured. */
+  const handleDemoLogin = () => {
     const themeRole = selectedRole === UserRole.TECHNICIAN
       ? 'technician'
       : selectedRole === UserRole.TENANT
@@ -89,7 +122,7 @@ export default function LoginScreen() {
           </Text>
         </Animated.View>
 
-        {/* Role Selector — pill buttons, no wrapping */}
+        {/* Role Selector — for demo mode */}
         <Animated.View
           entering={FadeInDown.delay(200).springify()}
           style={styles.roleSelector}
@@ -126,6 +159,13 @@ export default function LoginScreen() {
           </View>
         </Animated.View>
 
+        {/* Error Message */}
+        {errorMsg && (
+          <Animated.View entering={FadeInDown.springify()} style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠️ {errorMsg}</Text>
+          </Animated.View>
+        )}
+
         {/* Form */}
         <Animated.View
           entering={FadeInDown.delay(300).springify()}
@@ -135,7 +175,7 @@ export default function LoginScreen() {
             label="Email"
             placeholder="your@email.com"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => { setEmail(text); setErrorMsg(null); }}
             keyboardType="email-address"
             autoCapitalize="none"
             testID="login-email"
@@ -144,18 +184,34 @@ export default function LoginScreen() {
             label="Password"
             placeholder="••••••••"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => { setPassword(text); setErrorMsg(null); }}
             secureTextEntry
             containerStyle={styles.inputGap}
             testID="login-password"
           />
 
           <Button
-            label="Sign In"
+            label={isLoading ? '' : 'Sign In'}
             onPress={handleLogin}
             fullWidth
+            disabled={isLoading}
             style={styles.submitButton}
             testID="login-submit"
+          />
+
+          {isLoading && (
+            <ActivityIndicator
+              color={Colors.customer.primary}
+              style={{ position: 'absolute', bottom: 130, alignSelf: 'center' }}
+            />
+          )}
+
+          <Button
+            label="Demo Mode (No Account)"
+            variant="ghost"
+            onPress={handleDemoLogin}
+            fullWidth
+            testID="login-demo"
           />
 
           <Button
@@ -224,6 +280,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
     color: Colors.textSecondary,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(214, 57, 57, 0.12)',
+    borderRadius: Radius.s,
+    padding: Spacing.m,
+    marginBottom: Spacing.m,
+    borderWidth: 1,
+    borderColor: 'rgba(214, 57, 57, 0.3)',
+  },
+  errorText: {
+    color: Colors.danger,
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
   },
   form: {
     gap: Spacing.m,

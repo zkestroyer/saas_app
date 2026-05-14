@@ -11,6 +11,7 @@ import { Button } from '../../src/components/ui/button';
 import { HapticPress } from '../../src/components/ui/haptic-press';
 import { useAuthStore } from '../../src/stores/auth-store';
 import { useThemeStore } from '../../src/stores/theme-store';
+import * as authService from '../../src/services/auth-service';
 
 /** Profile & Settings screen with editable fields and working logout. */
 export default function ProfileScreen() {
@@ -31,7 +32,8 @@ export default function ProfileScreen() {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await authService.signOut(user?.id);
             logout();
             /* Navigate to login — use setTimeout to allow state to clear first */
             setTimeout(() => {
@@ -43,16 +45,29 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!user) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setUser({
-      ...user,
+
+    /* Update via Supabase */
+    const result = await authService.updateProfile(user.id, {
       name: editName.trim() || user.name,
       phone: editPhone.trim() || user.phone,
       email: editEmail.trim() || user.email,
-      updated_at: new Date().toISOString(),
     });
+
+    if (result.success && result.data) {
+      setUser(result.data);
+    } else {
+      /* Fallback: update locally even if remote fails */
+      setUser({
+        ...user,
+        name: editName.trim() || user.name,
+        phone: editPhone.trim() || user.phone,
+        email: editEmail.trim() || user.email,
+        updated_at: new Date().toISOString(),
+      });
+    }
     setIsEditing(false);
     Alert.alert('Saved', 'Your profile has been updated.');
   };

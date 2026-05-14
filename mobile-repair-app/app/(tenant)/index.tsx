@@ -1,16 +1,26 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import { GlassView } from '../../src/components/ui/glass-view';
 import { StatCard } from '../../src/components/ui/stat-card';
 import { useAuthStore } from '../../src/stores/auth-store';
+import * as analyticsService from '../../src/services/analytics-service';
 
-/** Tenant business analytics dashboard. */
+/** Tenant business analytics dashboard — real data from Supabase. */
 export default function TenantDashboard() {
   const user = useAuthStore((s) => s.user);
+
+  const { data: statsResult, isLoading } = useQuery({
+    queryKey: ['tenantStats', user?.tenant_id],
+    queryFn: () => analyticsService.getTenantStats(user?.tenant_id ?? ''),
+    enabled: !!user?.tenant_id,
+  });
+
+  const stats = statsResult?.data;
 
   return (
     <View style={styles.container}>
@@ -39,10 +49,10 @@ export default function TenantDashboard() {
                 MONTHLY REVENUE
               </Text>
               <Text style={[Typography.h1, { color: Colors.white, fontSize: 40 }]}>
-                $12,847
+                ${stats?.monthlyRevenue?.toLocaleString() ?? '0'}
               </Text>
               <Text style={[Typography.bodySmall, { color: 'rgba(255,255,255,0.7)' }]}>
-                ↑ 18.5% from last month
+                {(stats?.revenueChange ?? 0) >= 0 ? '↑' : '↓'} {Math.abs(stats?.revenueChange ?? 0)}% from last month
               </Text>
             </LinearGradient>
           </Animated.View>
@@ -51,29 +61,26 @@ export default function TenantDashboard() {
           <View style={styles.statsGrid}>
             <StatCard
               title="Active Jobs"
-              value="23"
+              value={String(stats?.activeJobs ?? 0)}
               icon={<Text style={{ fontSize: 18 }}>🔧</Text>}
-              change={5.2}
               delay={300}
             />
             <StatCard
               title="Technicians"
-              value="8"
+              value={String(stats?.technicianCount ?? 0)}
               icon={<Text style={{ fontSize: 18 }}>👥</Text>}
               delay={400}
             />
             <StatCard
               title="Avg. Rating"
-              value="4.8"
+              value={String(stats?.averageRating ?? 0)}
               icon={<Text style={{ fontSize: 18 }}>⭐</Text>}
-              change={2.1}
               delay={500}
             />
             <StatCard
               title="Completion"
-              value="94%"
+              value={`${stats?.completionRate ?? 0}%`}
               icon={<Text style={{ fontSize: 18 }}>✅</Text>}
-              change={3.7}
               delay={600}
             />
           </View>

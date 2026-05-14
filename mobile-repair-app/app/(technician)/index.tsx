@@ -1,44 +1,42 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
 import { Colors, Spacing, Typography } from '../../src/theme';
 import { GlassView } from '../../src/components/ui/glass-view';
 import { StatCard } from '../../src/components/ui/stat-card';
 import { Badge } from '../../src/components/ui/badge';
 import { HapticPress } from '../../src/components/ui/haptic-press';
 import { useAuthStore } from '../../src/stores/auth-store';
+import * as jobService from '../../src/services/job-service';
+import * as analyticsService from '../../src/services/analytics-service';
 import { JobStatus } from '../../src/types';
 
-const ACTIVE_JOBS = [
-  {
-    id: 'J-101', customer: 'Sarah M.', device: 'iPhone 15 Pro',
-    issue: 'Screen Crack', status: JobStatus.ASSIGNED, priority: 'high',
-    location: '12 Oak Ave', time: '30 min ago',
-  },
-  {
-    id: 'J-102', customer: 'Mike R.', device: 'Samsung Galaxy S24',
-    issue: 'Battery Drain', status: JobStatus.EN_ROUTE, priority: 'medium',
-    location: '45 Pine St', time: '1 hour ago',
-  },
-  {
-    id: 'J-103', customer: 'Lisa K.', device: 'Google Pixel 8',
-    issue: 'Water Damage', status: JobStatus.DIAGNOSING, priority: 'high',
-    location: 'Shop', time: '2 hours ago',
-  },
-];
-
-const PRIORITY_COLORS: Record<string, string> = {
-  high: Colors.danger,
-  medium: Colors.warning,
-  low: Colors.success,
-};
-
-/** Technician HUD Dashboard — data-dense, industrial design. */
+/** Technician HUD Dashboard — real data from Supabase. */
 export default function TechnicianDashboard() {
   const user = useAuthStore((s) => s.user);
+
+  /* Fetch real jobs from Supabase */
+  const { data: jobsResult, isLoading: jobsLoading } = useQuery({
+    queryKey: ['technicianJobs', user?.id],
+    queryFn: () => jobService.getTechnicianJobs(user?.id ?? ''),
+    enabled: !!user?.id,
+  });
+
+  /* Fetch real stats */
+  const { data: statsResult } = useQuery({
+    queryKey: ['technicianStats', user?.id],
+    queryFn: () => analyticsService.getTechnicianStats(user?.id ?? ''),
+    enabled: !!user?.id,
+  });
+
+  const jobs = (jobsResult?.data ?? []).filter(
+    (j: any) => j.status !== JobStatus.COMPLETED && j.status !== JobStatus.CANCELLED,
+  );
+  const stats = statsResult?.data;
 
   return (
     <View style={styles.container}>
@@ -65,17 +63,15 @@ export default function TechnicianDashboard() {
           <View style={styles.statsRow}>
             <StatCard
               title="Today's Jobs"
-              value="5"
+              value={String(stats?.todayJobs ?? 0)}
               icon={<Text style={{ fontSize: 18 }}>🔧</Text>}
-              change={12.5}
               delay={200}
               testID="stat-today-jobs"
             />
             <StatCard
               title="Earnings"
-              value="$487"
+              value={`$${stats?.todayEarnings ?? 0}`}
               icon={<Text style={{ fontSize: 18 }}>💰</Text>}
-              change={8.2}
               delay={300}
               testID="stat-earnings"
             />
@@ -88,13 +84,13 @@ export default function TechnicianDashboard() {
                 WEEKLY REPAIR VOLUME
               </Text>
               <View style={styles.sparkRow}>
-                {[3, 5, 2, 7, 4, 6, 8].map((val, i) => (
+                {(stats?.weeklyVolume ?? [0, 0, 0, 0, 0, 0, 0]).map((val: number, i: number) => (
                   <View key={i} style={styles.sparkCol}>
                     <View
                       style={[
                         styles.sparkBar,
                         {
-                          height: val * 8,
+                          height: Math.max(val * 8, 4),
                           backgroundColor:
                             i === 6
                               ? Colors.technician.primary
@@ -115,30 +111,40 @@ export default function TechnicianDashboard() {
           <Animated.View entering={FadeInDown.delay(400).springify()}>
             <View style={styles.sectionHeader}>
               <Text style={[Typography.h3, { color: Colors.textPrimary }]}>Active Jobs</Text>
-              <Badge label={`${ACTIVE_JOBS.length} pending`} variant="warning" size="sm" />
+              <Badge label={`${jobs.length} active`} variant="warning" size="sm" />
             </View>
           </Animated.View>
 
-          {ACTIVE_JOBS.map((job, i) => (
+          {jobsLoading ? (
+            <ActivityIndicator color={Colors.technician.primary} style={{ marginTop: 20 }} />
+          ) : jobs.length === 0 ? (
+            <GlassView style={{ padding: Spacing.xl, alignItems: 'center' as const }}>
+              <Text style={{ fontSize: 40, marginBottom: Spacing.s }}>✅</Text>
+              <Text style={[Typography.body, { color: Colors.textSecondary, textAlign: 'center' }]}>
+                No active jobs.{"\n"}You're all caught up!
+              </Text>
+            </GlassView>
+          ) : (
+          jobs.map((job: any, i: number) => (
             <Animated.View key={job.id} entering={FadeInRight.delay(500 + i * 100).springify()}>
               <HapticPress
                 onPress={() => router.push(`/(technician)/job/${job.id}`)}
                 testID={`tech-job-${job.id}`}
               >
-                <GlassView style={styles.jobCard} borderColor={`${PRIORITY_COLORS[job.priority]}33`}>
+                <GlassView style={styles.jobCard} borderColor={`${Colors.technician.primary}33`}>
                   {/* Priority indicator bar */}
-                  <View style={[styles.priorityBar, { backgroundColor: PRIORITY_COLORS[job.priority] }]} />
+                  <View style={[styles.priorityBar, { backgroundColor: Colors.technician.primary }]} />
                   <View style={styles.jobContent}>
                     <View style={styles.jobTop}>
                       <View>
                         <Text style={[Typography.overline, { color: Colors.textMuted, fontSize: 10 }]}>
-                          {job.id}
+                          {job.id.slice(0, 8).toUpperCase()}
                         </Text>
                         <Text style={[Typography.h4, { color: Colors.textPrimary }]}>
-                          {job.device}
+                          {job.device_brand} {job.device_model}
                         </Text>
                         <Text style={[Typography.bodySmall, { color: Colors.textSecondary }]}>
-                          {job.issue} • {job.customer}
+                          {job.issue_category?.replace('_', ' ') ?? ''} • {job.customer?.name ?? 'Customer'}
                         </Text>
                       </View>
                       <Badge
@@ -149,17 +155,17 @@ export default function TechnicianDashboard() {
                     </View>
                     <View style={styles.jobBottom}>
                       <Text style={[Typography.caption, { color: Colors.textMuted }]}>
-                        📍 {job.location}
+                        📍 {typeof job.location === 'object' ? job.location?.address ?? 'Location' : 'Location'}
                       </Text>
                       <Text style={[Typography.caption, { color: Colors.textMuted }]}>
-                        {job.time}
+                        {new Date(job.updated_at ?? job.created_at).toLocaleDateString()}
                       </Text>
                     </View>
                   </View>
                 </GlassView>
               </HapticPress>
             </Animated.View>
-          ))}
+          )))}
 
           <View style={{ height: 80 }} />
         </ScrollView>
